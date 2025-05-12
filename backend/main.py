@@ -1,11 +1,24 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from deepface import DeepFace
 from pydantic import BaseModel
 import numpy as np
 import cv2
-import json # Added for parsing options if it's a JSON string
+
+
+
+
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Pydantic model for request body options
 # It's good practice to define default values.
@@ -69,8 +82,13 @@ async def analyze_photo(
         options_dict = options_dict.model_dump()
         detected_face_options = [key for key, value in options_dict.items() if value is True]
 
-        analysis_result = DeepFace.analyze(converted_img, actions=detected_face_options, enforce_detection=False, silent=True, expand_percentage=10)
-      
+        analysis_result = DeepFace.analyze(converted_img, actions=detected_face_options, enforce_detection=True, silent=True, expand_percentage=10)
+        if (len(analysis_result) < 1):
+            return {
+                'message': 'No faces were found',
+                'faces': []
+            }
+
         print(f"Analysis result length: {len(analysis_result)}")
         faces_results = []  
 
@@ -103,7 +121,7 @@ async def analyze_photo(
             "faces": faces_results
         }
                
-        
+    
        
     except Exception as e:
         # Log the detailed error for debugging on the server
@@ -112,10 +130,4 @@ async def analyze_photo(
         
 
 
-@app.post("/analyze/video")
-async def analyze_video():
-    # This endpoint is a placeholder as per your original code
-    return {"message": "Video analysis endpoint is not yet implemented."}
 
-# To run this application (save as main.py or similar):
-# uvicorn main:app --reload
